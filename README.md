@@ -6,17 +6,14 @@ MVP React + TypeScript pour créer, sauvegarder, rouvrir et modifier une tontine
 
 ```bash
 npm install
-cp .env.example .env
-npm run dev
+npx netlify dev
 ```
 
-## Configuration Supabase
+`netlify dev` lance ensemble Vite et la fonction de sauvegarde locale.
 
-1. Créez un projet sur Supabase.
-2. Exécutez [`supabase/schema.sql`](supabase/schema.sql) dans l’éditeur SQL.
-3. Copiez l’URL du projet et la clé publique `anon` dans `.env`.
+## Stockage
 
-N’utilisez jamais la clé `service_role` côté navigateur. La table n’a aucune politique publique : les trois fonctions RPC vérifient le code d’accès haché et empêchent la liste des tontines.
+Les tontines sont enregistrées avec Netlify Blobs par une fonction serveur. Le code d’accès n’est jamais stocké en clair : son empreinte SHA-256 sert de clé. L’API ne fournit aucune route permettant de lister les tontines.
 
 ## Vérification
 
@@ -26,18 +23,8 @@ npm test
 npm run build
 ```
 
-## Déploiement GitHub Pages
-
-Le projet utilise une base Vite relative, compatible avec un sous-répertoire GitHub Pages.
-
-```bash
-npm run deploy
-```
-
-Dans GitHub, choisissez ensuite la branche `gh-pages` comme source de Pages. Ajoutez `VITE_SUPABASE_URL` et `VITE_SUPABASE_ANON_KEY` à l’environnement de build si vous automatisez le déploiement.
-
 ## Déploiement Netlify
 
-Le fichier `netlify.toml` configure automatiquement la commande `npm run build`, le dossier `dist` et le repli SPA vers `index.html`.
+Le fichier `netlify.toml` configure la construction, le dossier `dist`, la fonction serveur, sa route `/api/tontines` et le repli SPA. Reliez simplement le dépôt GitHub dans Netlify ou lancez `npx netlify deploy --prod`.
 
-Dans Netlify, reliez le dépôt GitHub puis ajoutez les variables d’environnement `VITE_SUPABASE_URL` et `VITE_SUPABASE_ANON_KEY` avant le déploiement de production.
+Aucune variable d’environnement et aucun projet Supabase ne sont nécessaires.

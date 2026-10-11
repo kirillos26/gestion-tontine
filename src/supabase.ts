@@ -1,30 +1,35 @@
-import { createClient } from '@supabase/supabase-js'
 import type { TontineData } from './types'
 
-const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
-const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
-const hasRealConfiguration = Boolean(
-  url && key &&
-  /^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(url) &&
-  !url.includes('votre-projet') &&
-  !key.includes('votre-cle'),
-)
-export const configured = hasRealConfiguration
-const supabase = configured ? createClient(url!, key!) : null
+export const configured = true
 
-const configurationError = () => new Error(
-  "Supabase n’est pas configuré : remplacez les valeurs d’exemple dans .env par l’URL et la clé publique anon de votre projet, puis redémarrez npm run dev.",
-)
+type Action = 'create' | 'open' | 'update'
 
-async function safely<T>(operation: () => PromiseLike<T>): Promise<T> {
+interface ApiResponse {
+  data?: TontineData
+  error?: string
+}
+
+async function request(action: Action, code: string, data?: TontineData): Promise<TontineData | undefined> {
+  let response: Response
   try {
-    return await operation()
-  } catch (error) {
-    if (error instanceof TypeError && /fetch/i.test(error.message)) {
-      throw new Error('Impossible de joindre Supabase. Vérifiez l’URL dans .env, votre connexion internet, puis redémarrez l’application.')
-    }
-    throw error
+    response = await fetch('/api/tontines', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, code: code.trim(), data }),
+    })
+  } catch {
+    throw new Error('Impossible de joindre le service de sauvegarde. Vérifiez votre connexion internet et réessayez.')
   }
+
+  let result: ApiResponse
+  try {
+    result = await response.json() as ApiResponse
+  } catch {
+    throw new Error('Le service de sauvegarde a renvoyé une réponse invalide. Réessayez dans quelques instants.')
+  }
+
+  if (!response.ok) throw new Error(result.error || 'Impossible d’enregistrer la tontine.')
+  return result.data
 }
 
 export function generateAccessCode(): string {
@@ -34,21 +39,17 @@ export function generateAccessCode(): string {
 }
 
 export async function createTontine(data: TontineData, code: string): Promise<TontineData> {
-  if (!supabase) throw configurationError()
-  const { data: result, error } = await safely(() => supabase.rpc('create_tontine', { p_access_code: code, p_data: data }))
-  if (error) throw new Error(error.message)
-  return { ...data, id: result as string }
+  const created = await request('create', code, data)
+  if (!created) throw new Error('La tontine n’a pas pu être créée.')
+  return created
 }
 
 export async function openTontine(code: string): Promise<TontineData> {
-  if (!supabase) throw configurationError()
-  const { data, error } = await safely(() => supabase.rpc('open_tontine', { p_access_code: code.trim() }))
-  if (error || !data) throw new Error('Code introuvable ou invalide.')
-  return data as TontineData
+  const data = await request('open', code)
+  if (!data) throw new Error('Code introuvable ou invalide.')
+  return data
 }
 
 export async function updateTontine(data: TontineData, code: string): Promise<void> {
-  if (!supabase) throw configurationError()
-  const { error } = await safely(() => supabase.rpc('update_tontine', { p_access_code: code, p_data: data }))
-  if (error) throw new Error(error.message)
+  await request('update', code, data)
 }
