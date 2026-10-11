@@ -35,3 +35,9 @@ npm run deploy
 ```
 
 Dans GitHub, choisissez ensuite la branche `gh-pages` comme source de Pages. Ajoutez `VITE_SUPABASE_URL` et `VITE_SUPABASE_ANON_KEY` à l’environnement de build si vous automatisez le déploiement.
+
+## Déploiement Netlify
+
+Le fichier `netlify.toml` configure automatiquement la commande `npm run build`, le dossier `dist` et le repli SPA vers `index.html`.
+
+Dans Netlify, reliez le dépôt GitHub puis ajoutez les variables d’environnement `VITE_SUPABASE_URL` et `VITE_SUPABASE_ANON_KEY` avant le déploiement de production.
